@@ -1,0 +1,103 @@
+set val(chan) Channel/wirelessChannel;
+set val(prop) Propagation/towRayGround;
+set val(netif) Phy/WirelessPhy;
+set val(mac) Mac/802.11;
+set val(ifq) Queue/DropTail/PriQueue;
+set val(ll) LL;
+set val(ant) Antenna/OmniAntenna;
+set val(ifqlen) 50;
+set val(nn) 20;
+set val(rp) AODV;
+set val(stop) 150;
+
+set ns [net Simulator]
+set tracefd [open thesis.tr w]
+set namtrace [open thisis.nam w]
+$ns trace-all $tracefd
+$ns nametrace-all-wireless $nametrace $val(x) $val(y)
+
+set topo [new Topography]
+$topo load_flatgrid $val(x) $val(y)
+
+create-god $val(nn)
+
+$ns node-config -adhocRouting $val(rp) \
+-lltype $val(ll) \
+-macType $val(mac) \
+-ifqType $val(ifq) \
+-antType $val(ifqlen) \
+-propType $val(prop) \
+-phyType $val(netif) \
+-channelType $val(chan) \
+-topoInstance $topo \
+-agentTrace ON \
+-routerTrace ON \
+-macTrace OFF \
+-movementTrace ON
+
+for {set i 0} {$i < $val(nn) } { incr i } {
+set n($i) [$ns node ]
+}
+
+$n(0) set X_105.0
+$n(0) set Y_206.0
+$n(0) set Z_0.0
+
+$n(1) set X_805.0
+$n(1) set Y_706.0
+$n(1) set Z_0.0
+
+$n(2) set X_515.0
+$n(2) set Y_606.0
+$n(2) set Z_0.0
+
+$n(3) set X_405.0
+$n(3) set Y_342.0
+$n(3) set Z_0.0
+
+
+$n(4) set Z_0.0
+
+set tcp [new agent/TCP/Newreno]
+$tcp set class_ 2
+set sink [new Agent/TCPSink]
+$ns attach-agent $n(1) $tcp
+$ns attach-agent $n(13) $sink
+$ns connect $tcp $sink
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+
+$ns at 10.0 "$ftp start"
+$ns at 0.0 "$n(1) label source"
+$ns at 0.0 "$n(4) label Destination"
+
+$ns at 0.0 "$n(0) setdest 130.0 208.0 5.0"
+$ns at 0.0 "Sn(1) setdest 485.0 128.0 5.0"
+$ns at 1.0 "$n(2) setdest 615.0 340.0 5.0"
+$ns at 1.0 "$n(3) setdest 680.0 458.0 5.0"
+$ns at 3.0 "$n(4) setdest 580.0 368.0 5.0"
+
+for {set i 0} {$i <$val(nn)} { incr i } {
+$ns initial_node_pos $n($i) 60
+}
+
+for {set i 0 } { $i <$val(nn) } { incr i } {
+$nd at $val(stop) "$n($i) reset";
+}
+
+$ns at $val(stop) "$ns nam-end-wireless $val(stop)"
+$ns at $val(stop) "stop"
+$ns at 150.01 "puts \"end simulation\" ;$ns halt"
+proc stop {} {
+global ns tracefd nametrace
+$ns flush-trace
+close $tracefd
+close $nametrace
+exec nam thesis.nam &
+}
+proc finish {} {
+exec xgraph simple.tr -geometry 1000*1000
+exit 0
+}
+$ns run
+  
